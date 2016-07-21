@@ -1,3 +1,7 @@
+#!/usr/bin/env node
+
+'use strict';
+
 import minimist from 'minimist';
 import {omit} from 'lodash';
 import init from './commands/init';

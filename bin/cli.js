@@ -1,3 +1,6 @@
+#!/usr/bin/env node
+
+
 'use strict';
 
 var _minimist = require('minimist');
