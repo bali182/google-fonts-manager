@@ -1,10 +1,16 @@
 {
   "name": "google-fonts-manager",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "homepage": "https://github.com/bali182/google-fonts-manager#readme",
-  "bin": "src/cli.js",
+  "bin": {
+    "gfm": "./bin/cli.js"
+  },
+  "scripts": {
+    "build": "babel src --out-dir bin",
+    "prepublish": "npm run build"
+  },
   "dependencies": {
     "bluebird": "^3.4.1",
     "camelcase": "^3.0.0",

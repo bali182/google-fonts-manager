@@ -1,4 +1,3 @@
-import inquirer from 'inquirer';
 import minimist from 'minimist';
 import {omit} from 'lodash';
 import init from './commands/init';

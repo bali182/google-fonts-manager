@@ -6,7 +6,7 @@ import {convert} from '../lib/convert';
 import {findByName} from '../lib/find';
 import {write} from '../lib/write';
 import {config, configFilePath, configFileName, writeConfig} from '../lib/config';
-import {success, error} from '../lib/utils';
+import {success, error, successThen, errorThen, logThen} from '../lib/utils';
 
 const variantMapping = {
   '100': 'hairline',
@@ -52,7 +52,7 @@ function questions(font) {
       type: 'checkbox',
       name: 'formats',
       message: 'Formats:',
-      default: ['ttf', 'woff', 'eot', /*'svg'*/],
+      default: ['ttf', 'woff', 'eot', 'svg'],
       choices: [
         { name: 'ttf', value: 'ttf' },
         { name: 'woff', value: 'woff' },
@@ -72,13 +72,13 @@ function questions(font) {
 
 
 function installFont(font, variants, formats, save, cfg) {
-  const installPromise = download(font, variants, formats).then(font => {
+  let installPromise = download(font, variants, formats).then(font => {
    	return write(font, cfg.output || 'fonts');
   });
   if (save) {
-    return installPromise.then(_ => writeConfig(merge({}, cfg, { fonts: { [font.family]: { variants, formats } } })))
+    installPromise = installPromise.then(_ => writeConfig(merge({}, cfg, { fonts: { [font.family]: { variants, formats } } })))
   }
-  return installPromise;
+  return installPromise.then(successThen(`${font.family} downloaded - ${variants.length} variant(s), ${formats.length} format(s)`));;
 }
 
 function installFontInternal(fontName) {
@@ -94,22 +94,28 @@ function installFontInternal(fontName) {
             return installFont(font, variants, formats, save, cfg);
           });
         }
-      }).catch(e => error(`${e.message}. Make sure apiKey is valid in ${configFilePath()}`));
+      }).catch(e => { error(e.message); console.log(e) });
     }
   }).catch(_ => error(`Can't read ${configFilePath()}`))
 }
 
 function installFromConfig() {
   return config().then(cfg => {
-    const fontsFromCfg = cfg.fonts || {};
-    const findFonts = Promise.all(Object.keys(fontsFromCfg).map(name => findByName(name, cfg.apiKey)));
-    return findFonts.then(fonts => {
-      return Promise.all(fonts.map(font => {
-        const {variants, formats} = fontsFromCfg[font.family];
-        return installFont(font, variants || [], formats || [], false, cfg);
-      }))
-    })
-  });
+    if (!cfg.apiKey) {
+      error('Mandatory apiKey field missing from config');
+    } else {
+      const fontsFromCfg = cfg.fonts || {};
+      const findFontPromises = Object.keys(fontsFromCfg)
+        .map(name => findByName(name, cfg.apiKey).then(successThen(`${name} found`)))
+      const findFonts = Promise.all(findFontPromises);
+      return findFonts.then(fonts => {
+        return Promise.all(fonts.map(font => {
+          const {variants, formats} = fontsFromCfg[font.family];
+          return installFont(font, variants || [], formats || [], false, cfg);
+        }));
+      });
+    }
+  }).catch(e => error(e.message));
 }
 
 export default function install(input, args) {
